@@ -1,0 +1,41 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Windows.Forms;
+using System.Reflection;
+using System.Linq;
+[assembly: AssemblyTitle(@@TITLE@@)]
+[assembly: AssemblyVersion("1.0.0.0")]
+internal static class Launcher {
+ [STAThread] static int Main(string[] args) {
+  bool check=args.Length==1 && args[0]=="--check";
+  string root=AppDomain.CurrentDomain.BaseDirectory;
+  string target=Path.Combine(root,@@TARGET@@);
+  string support=Path.Combine(root,@@SUPPORT@@);
+  string log=Path.Combine(support,"launcher-check.txt");
+  try {
+   if(args.Length>0 && !check) throw new Exception("仅接受 --check 参数。");
+   foreach(string name in new string[]{"LEProc.exe","LECommonLibrary.dll","LoaderDll.dll","LocaleEmulator.dll","LEConfig.xml","LEVersion.xml"})
+    if(!File.Exists(Path.Combine(support,name))) throw new FileNotFoundException("缺少启动文件："+name);
+   if(!File.Exists(target)) throw new FileNotFoundException("请把启动器和配套文件夹放在游戏 EXE 同目录："+target);
+   var doc=System.Xml.Linq.XDocument.Load(Path.Combine(support,"LEConfig.xml"));
+   var profile=doc.Descendants("Profile").Single(p=>(string)p.Attribute("Guid")==@@GUID@@);
+   if((string)profile.Element("Location")!="ja-JP" || (string)profile.Element("RunAsAdmin")!="false") throw new Exception("日文启动配置已改变。");
+   using(var r=new BinaryReader(File.OpenRead(target))) {
+    if(r.ReadUInt16()!=0x5a4d) throw new Exception("目标不是有效程序。");
+    r.BaseStream.Position=60; int pe=r.ReadInt32(); r.BaseStream.Position=pe;
+    if(r.ReadUInt32()!=0x4550 || r.ReadUInt16()!=0x14c) throw new Exception("本启动器仅支持原生 32 位程序。");
+   }
+   string command="-runas "+@@GUID@@+" \""+target+"\"";
+   File.WriteAllText(log,"FileCheck=passed\r\nRuntimeVerified=false\r\nTarget="+target+"\r\nLocale=ja-JP / CP932\r\nArguments="+command+"\r\n",Encoding.UTF8);
+   if(check) return 0;
+   Process.Start(new ProcessStartInfo {FileName=Path.Combine(support,"LEProc.exe"),Arguments=command,WorkingDirectory=root,UseShellExecute=false,CreateNoWindow=true});
+   return 0;
+  } catch(Exception e) {
+   try {File.WriteAllText(log,e.ToString(),Encoding.UTF8);} catch {}
+   if(!check) MessageBox.Show(e.Message,"游戏启动失败",MessageBoxButtons.OK,MessageBoxIcon.Error);
+   return 1;
+  }
+ }
+}

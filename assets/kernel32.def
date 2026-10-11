@@ -1,0 +1,7 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+GetACP@0
+CreateFileA@28
+WriteFile@20
+CloseHandle@4
+ExitProcess@4

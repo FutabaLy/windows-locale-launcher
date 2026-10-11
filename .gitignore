@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+work/
+outputs/
+build/
+*.exe
+*.dll
+*.zip
+*.o
+*.a
+native-probe.txt
+launcher-check.txt
